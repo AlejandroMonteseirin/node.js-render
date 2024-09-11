@@ -1,14 +1,105 @@
-const express = require("express");
+const express = require('express');
+const fs = require('fs');
+const bodyParser = require('body-parser');
 const app = express();
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = new Sequelize({
+  dialect: 'sqlite',          // Usamos SQLite
+  storage: './database.sqlite' // Archivo donde se almacenará la base de datos
+});
+
 const port = process.env.PORT || 3001;
+const couponsFile = './coupons.json';
+
+app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.type('html').send(html));
 
-const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+
+// Definir el modelo del cupón
+const Coupon = sequelize.define('Coupon', {
+  titulo: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  empresa: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  descripcion: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  enlace: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  fecha_creacion: {
+    type: DataTypes.DATE,
+    allowNull: false
+  }
+}, {});
+
+// Sincronizar la base de datos
+sequelize.sync();
+
+// Crear un nuevo cupón (POST)
+app.post('/coupons', async (req, res) => {
+  try {
+    req.body.fecha_creacion = new Date();
+    const coupon = await Coupon.create(req.body);
+    res.status(201).send(coupon);
+  } catch (error) {
+    res.status(400).send(error);
+  }
+});
+
+// Obtener todos los cupones (GET)
+app.get('/coupons', async (req, res) => {
+  const coupons = await Coupon.findAll();
+  res.status(200).send(coupons);
+});
+
+// Obtener un cupón por título (GET)
+app.get('/coupons/:title', async (req, res) => {
+  const coupon = await Coupon.findOne({ where: { titulo: req.params.title } });
+  if (coupon) {
+    res.status(200).send(coupon);
+  } else {
+    res.status(404).send('Cupón no encontrado');
+  }
+});
+
+// Actualizar un cupón por título (PUT)
+app.put('/coupons/:title', async (req, res) => {
+  req.body.fecha_creacion = new Date();
+  const coupon = await Coupon.findOne({ where: { titulo: req.params.title } });
+  if (coupon) {
+    await coupon.update(req.body);
+    res.status(200).send(coupon);
+  } else {
+    res.status(404).send('Cupón no encontrado');
+  }
+});
+
+// Eliminar un cupón por título (DELETE)
+app.delete('/coupons/:title', async (req, res) => {
+  const coupon = await Coupon.findOne({ where: { titulo: req.params.title } });
+  if (coupon) {
+    await coupon.destroy();
+    res.status(200).send('Cupón eliminado');
+  } else {
+    res.status(404).send('Cupón no encontrado');
+  }
+});
+
+
+const server = app.listen(port, () => {
+  console.log(`Servidor corriendo en http://localhost:${port}`);
+});
 
 server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 120 * 1000;
-
 const html = `
 <!DOCTYPE html>
 <html>
