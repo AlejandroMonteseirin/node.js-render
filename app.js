@@ -3,6 +3,26 @@ const fs = require('fs');
 const bodyParser = require('body-parser');
 const app = express();
 const { Sequelize, DataTypes } = require('sequelize');
+const rateLimit = require('express-rate-limit');
+// Configurar el limitador de tasa
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Límite de 100 solicitudes por IP
+  message: 'Has excedido el número de solicitudes permitidas, inténtalo más tarde.',
+  standardHeaders: true, // Devuelve información de rate limit en los headers `RateLimit-*`
+  legacyHeaders: false, // Desactiva los headers `X-RateLimit-*`
+});
+const extrictLimiter = rateLimit({
+  windowMs: 1440 * 60 * 1000, // 1 dia
+  max: 1, // Límite de 100 solicitudes por IP
+  message: 'Has excedido el número de solicitudes permitidas, inténtalo más tarde.',
+  standardHeaders: true, // Devuelve información de rate limit en los headers `RateLimit-*`
+  legacyHeaders: false, // Desactiva los headers `X-RateLimit-*`
+});
+app.use(limiter);
+app.use('/coupons', extrictLimiter);
+
+
 const sequelize = new Sequelize({
   dialect: 'sqlite',          // Usamos SQLite
   storage: './database.sqlite' // Archivo donde se almacenará la base de datos
@@ -12,7 +32,6 @@ const port = process.env.PORT || 3001;
 const couponsFile = './coupons.json';
 
 app.use(bodyParser.json());
-
 app.get("/", (req, res) => res.type('html').send(html));
 
 
